@@ -100,12 +100,17 @@ services:
       - security-net
     environment:
       SERVICE_NAME: alerting
+      RULES_DIR: /app/detections
+      ALERTS_DIR: /data/alerts
+      LOGS_PATH: /data/logs/synthetic-events.jsonl
+    volumes:
+      - lab_data:/data
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8004/health')"]
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 10s
+      start_period: 15s
 
   postgres:
     image: postgres:16-alpine
@@ -143,3 +148,4 @@ networks:
 
 volumes:
   postgres_data:
+  lab_data:

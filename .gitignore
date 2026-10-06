@@ -226,3 +226,7 @@ __marimo__/
 docker-data/
 postgres_data/
 .DS_Store
+data/logs/*.jsonl
+data/alerts/*.json
+!data/logs/.gitkeep
+!data/alerts/.gitkeep

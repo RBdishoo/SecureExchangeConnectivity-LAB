@@ -79,6 +79,25 @@ pip install -r requirements-dev.txt
 pytest -q
 ```
 
+### Detection demo (Week 3)
+
+```bash
+# 1) Generate benign + malicious synthetic JSONL
+python scripts/generate-events.py --out data/logs/synthetic-events.jsonl
+
+# 2) Run all five detections
+python scripts/run-detections.py --logs data/logs/synthetic-events.jsonl --out data/alerts
+
+# 3) Investigate one alert (pick an alert_id from data/alerts/alerts.json)
+ALERT=$(python -c 'import json; print(json.load(open("data/alerts/alerts.json"))[0]["alert_id"])')
+python scripts/investigate-alert.py \
+  --alert data/alerts/$ALERT.json \
+  --logs data/logs/synthetic-events.jsonl
+```
+
+Catalog + false positives: [`docs/detection-catalog.md`](docs/detection-catalog.md)  
+Sample incident write-up: [`docs/incident-report-cross-tenant.md`](docs/incident-report-cross-tenant.md)
+
 Inspect structured JSON logs:
 
 ```bash
@@ -101,7 +120,7 @@ docker compose down
 | **identity** | Login, bcrypt passwords, JWT, RBAC, audit | `app-net` | Not internet-reachable; auth decisions stay on the app plane |
 | **matching-engine** | Tenant-scoped synthetic orders | `app-net`, `data-net` | Only app service allowed onto the data plane |
 | **market-data** | `/health` scaffold | `app-net` | App-plane distribution stub |
-| **alerting** | `/health` scaffold | `security-net` | Monitoring plane separated from trading path |
+| **alerting** | Detection engine API; alert store | `security-net` | Monitoring plane separated from trading path |
 | **postgres** | Lab database | `data-net` (**internal**) | No host port; unreachable from edge |
 
 Network diagram: [`diagrams/network-zones.mmd`](diagrams/network-zones.mmd) · Trust boundaries: [`docs/trust-boundaries.md`](docs/trust-boundaries.md)
@@ -127,14 +146,17 @@ Pass optional headers on requests: `x-actor-id`, `x-correlation-id`.
 | [`docs/threat-model.md`](docs/threat-model.md) | Threats for order, role change, investigate, DR |
 | [`docs/trust-boundaries.md`](docs/trust-boundaries.md) | Zone rules |
 | [`docs/data-flow.md`](docs/data-flow.md) | Request and log flows |
-| [`docs/design-decisions.md`](docs/design-decisions.md) | Why this stack and shape (incl. TLS termination) |
+| [`docs/design-decisions.md`](docs/design-decisions.md) | Stack choices, TLS termination notes |
+| [`docs/detection-catalog.md`](docs/detection-catalog.md) | Detection rules + false positives |
+| [`docs/incident-report-cross-tenant.md`](docs/incident-report-cross-tenant.md) | Sample investigation write-up |
 | [`diagrams/`](diagrams/) | Mermaid sources (render on GitHub) |
 
 ## Status
 
 - **Week 1 complete:** Compose networks, health services, JSON logging, docs/diagrams.
 - **Week 2 complete:** JWT/RBAC, tenant-scoped orders, admin audit, validation, rate limits, negative tests.
-- Later: detections/triage/CI (3), backup/DR + portfolio polish (4).
+- **Week 3 complete:** Five detections, event generator, triage script, incident report, security CI.
+- Later: backup/DR + portfolio polish (4).
 
 ## Limitations
 
@@ -142,7 +164,8 @@ Pass optional headers on requests: `x-actor-id`, `x-correlation-id`.
 - TLS is **not** terminated in Compose; see design-decisions for edge-termination + cert lifecycle.
 - Identity user store and audit log are in-memory (reset on container restart).
 - Matching engine enforces tenancy in-process; Postgres persistence is best-effort.
-- Detections, backups, and security CI remain stubs/scaffolds.
+- Detections operate on synthetic JSONL (not a full SIEM); thresholds are lab-tuned.
+- Security CI blocks secrets / high-severity filesystem findings as configured; tune allowlists for classroom forks.
 - Compose credentials / JWT secret are lab placeholders — never reuse outside this repo.
 - `data-net` isolation is a Docker Compose teaching model, not a production VPC design.
 

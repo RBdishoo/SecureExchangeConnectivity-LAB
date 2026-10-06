@@ -1,14 +1,16 @@
-# Incident Response Runbook (stub)
+# Incident Response Runbook
 
-> Week 1 stub. Full procedures arrive with Week 3 detections and the Week 4 simulated incident.
+Educational procedures for synthetic alerts in this lab.
 
 ## Purpose
 
-Guide analysts through triage of synthetic security alerts in this lab.
+Guide analysts through triage of synthetic security alerts.
 
-## Placeholder steps
+## Steps
 
-1. Confirm alert in the alerting service / detection output.
-2. Correlate by `correlation_id` across gateway, identity, and matching-engine JSON logs.
-3. Classify: true positive / false positive / benign lab noise.
-4. Document findings in an incident note (Week 4).
+1. Generate or collect JSON logs (`scripts/generate-events.py` or service stdout).
+2. Run detections (`scripts/run-detections.py`) and open `data/alerts/alerts.json`.
+3. Investigate with `scripts/investigate-alert.py` — capture timeline, actor, source IP, correlation IDs.
+4. Classify using [`detection-catalog.md`](detection-catalog.md) false-positive notes.
+5. Document evidence / hypothesis / conclusion (see [`incident-report-cross-tenant.md`](incident-report-cross-tenant.md)).
+6. Apply recommended containment from the alert payload (lab/simulated only).

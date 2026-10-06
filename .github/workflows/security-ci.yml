@@ -1,15 +1,68 @@
-# Week 3+ scaffold — security scanning CI
+# Security CI
+
 name: security-ci
 
 on:
   push:
-    branches: [main]
+    branches: [main, "cursor/**"]
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
-  placeholder:
+  gitleaks:
+    name: Gitleaks (secrets)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Week 1 placeholder
-        run: echo "Trivy/Semgrep/Gitleaks/pip-audit wired in Week 3"
+        with:
+          fetch-depth: 0
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  semgrep:
+    name: Semgrep (SAST)
+    runs-on: ubuntu-latest
+    container:
+      image: semgrep/semgrep
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run Semgrep
+        run: semgrep scan --config p/python --config p/owasp-top-ten --error --metrics=off
+
+  pip-audit:
+    name: pip-audit (dependencies)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install pip-audit and project deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install pip-audit
+          pip install -r requirements-dev.txt
+          pip install -r services/gateway/requirements.txt
+          pip install -r services/identity/requirements.txt
+          pip install -r services/matching-engine/requirements.txt
+          pip install -r services/alerting/requirements.txt
+      - name: Audit dependencies
+        run: pip-audit
+
+  trivy:
+    name: Trivy (filesystem / HIGH+CRITICAL)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run Trivy FS
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          severity: HIGH,CRITICAL
+          exit-code: "1"
+          ignore-unfixed: true

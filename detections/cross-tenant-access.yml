@@ -1,3 +1,32 @@
-# Week 3 scaffold
-title: Cross-tenant access attempt
-status: planned
+title: Cross-Tenant Access Attempt
+id: cross-tenant-access
+status: experimental
+level: high
+description: >
+  A member (or client) attempted to read an order belonging to another tenant
+  and was denied. Repeated attempts may indicate reconnaissance or a buggy
+  client.
+author: Secure Exchange Connectivity Lab
+tags:
+  - attack.collection
+  - lab.week3
+false_positives:
+  - Integration tests that deliberately probe cross-tenant denial paths
+  - Misconfigured UI that retries after 403 (look for identical correlation_id bursts)
+  - Staff roles incorrectly labeled as member in malformed log lines
+detection:
+  selection:
+    action_any:
+      - get_order
+      - GET /orders
+      - list_orders
+    result_any:
+      - denied_cross_tenant
+      - denied
+      - status_403
+  timeframe_seconds: 600
+  condition:
+    type: match_any
+    min_count: 1
+references:
+  - docs/detection-catalog.md
