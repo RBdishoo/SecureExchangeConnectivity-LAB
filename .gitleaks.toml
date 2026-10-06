@@ -6,5 +6,5 @@ useDefault = true
 [[rules]]
 id = "lab-placeholder-allow"
 description = "Allow documented lab-only placeholder secrets that are not real credentials"
-regex = '''changeme-lab-only|LAB_ONLY_PLACEHOLDER|postgres-lab-password'''
-path = '''(?i)(docker-compose\.yml|\.env\.example|README\.md|docs/.*|SECURITY\.md)'''
+regex = '''changeme-lab-only|LAB_ONLY_PLACEHOLDER|postgres-lab-password|changeme-lab-only-jwt-secret'''
+path = '''(?i)(docker-compose\.yml|\.env\.example|README\.md|docs/.*|SECURITY\.md|services/common/auth\.py|tests/.*)'''

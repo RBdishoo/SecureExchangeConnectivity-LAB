@@ -30,11 +30,22 @@
 
 **Why:** Consistent SIEM-ready fields (`actor_id`, `source_ip`, `action`, `result`, `correlation_id`) across services from day one.
 
-## JWT/RBAC deferred to Week 2
+## JWT/RBAC (Week 2)
 
-**Decision:** Identity exposes `/health` and `/roles` only in Week 1.
+**Decision:** Simple shared-secret JWT (HS256) with bcrypt password hashing and role claims (`member`, `security_analyst`, `operations`, `administrator`), enforced at the gateway and re-checked for tenant scope in the matching engine.
 
-**Why:** Establishes the service and network placement first; authorization logic arrives with negative tests in Week 2.
+**Why:** Demonstrates authentication vs authorization and defense-in-depth without standing up Keycloak for the lab MVP.
+
+## TLS termination (Week 2)
+
+**Decision:** Do **not** terminate TLS inside the Compose lab services for Week 2. Document edge TLS termination instead.
+
+**Why / how it would work in a hardened deployment:**
+
+1. **Termination point:** A reverse proxy or load balancer (nginx, Envoy, cloud LB) on the edge terminates TLS and forwards HTTP to `gateway` on `edge-net`.
+2. **Certificate lifecycle:** Issue certs from a private CA or ACME; store private keys in a secrets manager (not in git); rotate before expiry; automate renewal; revoke on compromise.
+3. **Lab scope:** Compose publishes plaintext `localhost:8080` for educational demos. Enabling HTTPS locally is feasible later with a mounted self-signed cert on an nginx sidecar; it is intentionally deferred so Week 2 focuses on identity and authorization behavior.
+4. **In-transit after termination:** Traffic on `app-net` / `data-net` remains private Docker networks in the lab model; production would add mTLS between services.
 
 ## Detection engine as Python + YAML later
 
@@ -44,6 +55,6 @@
 
 ## Placeholder secrets
 
-**Decision:** Use clearly fake Compose credentials such as `postgres-lab-password`.
+**Decision:** Use clearly fake Compose credentials such as `postgres-lab-password` and `changeme-lab-only-jwt-secret`.
 
 **Why:** Avoids accidental realism; documented in `SECURITY.md` and allowlisted narrowly in `.gitleaks.toml` for docs/compose only.

@@ -22,13 +22,13 @@ flowchart LR
 
 See also: [`diagrams/system-context.mmd`](../diagrams/system-context.mmd), [`diagrams/network-zones.mmd`](../diagrams/network-zones.mmd).
 
-## Services (Week 1)
+## Services (Week 2)
 
 | Service | Role | Networks | Host exposure |
 |---------|------|----------|---------------|
-| `gateway` | Edge entry; health + request logging | edge-net, app-net, security-net | `localhost:8080` |
-| `identity` | Role catalog scaffold; health | app-net | none |
-| `matching-engine` | Matching simulator health; DB URL configured | app-net, data-net | none |
+| `gateway` | Edge entry; JWT auth; order validation + rate limits | edge-net, app-net, security-net | `localhost:8080` |
+| `identity` | Login, bcrypt passwords, JWT issuance, RBAC, append-only audit | app-net | none |
+| `matching-engine` | Tenant-scoped synthetic orders (+ best-effort Postgres) | app-net, data-net | none |
 | `market-data` | Market-data scaffold health | app-net | none |
 | `alerting` | Detection/alerting scaffold health | security-net | none |
 | `postgres` | Synthetic lab database | data-net (internal) | none |
@@ -50,9 +50,9 @@ Every service emits structured JSON logs with:
 
 Shared helper: `services/common/logging_utils.py`.
 
-## Out of scope for Week 1
+## Out of scope for Week 2
 
-- JWT issuance / RBAC enforcement (Week 2)
 - Detection rules and triage scripts (Week 3)
 - Backup / DR restore verification (Week 4)
+- In-compose TLS termination (documented in design-decisions; edge proxy model)
 - Real FIX protocol or live market data (never)

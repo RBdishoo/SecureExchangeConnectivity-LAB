@@ -1,5 +1,7 @@
-# Secure Exchange Connectivity Lab — Week 1 foundation
+# Secure Exchange Connectivity Lab — Week 1–2 foundation
 # Synthetic / educational only. No real market data or credentials.
+
+x-jwt-secret: &jwt-secret changeme-lab-only-jwt-secret
 
 services:
   gateway:
@@ -14,13 +16,19 @@ services:
       - app-net
       - security-net
     environment:
-      - SERVICE_NAME=gateway
+      SERVICE_NAME: gateway
+      IDENTITY_URL: http://identity:8001
+      MATCHING_URL: http://matching-engine:8002
+      JWT_SECRET: *jwt-secret
+      JWT_EXPIRE_MINUTES: "30"
+      ORDER_RATE_LIMIT: "5"
+      ORDER_RATE_WINDOW_SECONDS: "60"
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 10s
+      start_period: 15s
     depends_on:
       identity:
         condition: service_healthy
@@ -35,13 +43,15 @@ services:
     networks:
       - app-net
     environment:
-      - SERVICE_NAME=identity
+      SERVICE_NAME: identity
+      JWT_SECRET: *jwt-secret
+      JWT_EXPIRE_MINUTES: "30"
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8001/health')"]
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 10s
+      start_period: 15s
 
   matching-engine:
     build:
@@ -52,14 +62,15 @@ services:
       - app-net
       - data-net
     environment:
-      - SERVICE_NAME=matching-engine
-      - DATABASE_URL=postgresql://labuser:postgres-lab-password@postgres:5432/seclab
+      SERVICE_NAME: matching-engine
+      DATABASE_URL: postgresql://labuser:postgres-lab-password@postgres:5432/seclab
+      JWT_SECRET: *jwt-secret
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8002/health')"]
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 10s
+      start_period: 15s
     depends_on:
       postgres:
         condition: service_healthy
@@ -72,7 +83,7 @@ services:
     networks:
       - app-net
     environment:
-      - SERVICE_NAME=market-data
+      SERVICE_NAME: market-data
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8003/health')"]
       interval: 10s
@@ -88,7 +99,7 @@ services:
     networks:
       - security-net
     environment:
-      - SERVICE_NAME=alerting
+      SERVICE_NAME: alerting
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8004/health')"]
       interval: 10s
