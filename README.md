@@ -3,7 +3,7 @@ Self learning of an exchange connectivity lab, exploring API security, security 
 
 ## Why this project exists?
 
-This project was built to demonstrate the implementations of security architecture in a system inspired by public connectivity concepts 
+This project was built to demonstrate the implementations of security architecture in a system inspired by public exchnage-connectivity concepts 
 
 ## What this project demonstrates:
 
