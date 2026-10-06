@@ -16,6 +16,6 @@ This project was built to demonstrate the implementations of security architectu
 
 ## System Architecture
 
-![Secure Exchange Connectivity Lab System Architecture](downloads/Board.png)
+![Secure Exchange Connectivity Lab System Architecture](docs/images/Board.png)
 
 This diagram illustrates the major trust zones and service interactions in the lab. It demonstrates how client traffic is automated, processed, logged, monitored, and recoverable, in a segmented system. 
