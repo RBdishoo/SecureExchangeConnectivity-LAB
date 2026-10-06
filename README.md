@@ -13,3 +13,9 @@ This project was built to demonstrate the implementations of security architectu
 - Alert generation and triage
 - Backup and restore workflow
 - Security-focused documentation
+
+## System Architecture
+
+![Secure Exchange Connectivity Lab System Architecture](downloads/Board.png)
+
+This diagram illustrates the major trust zones and service interactions in the lab. It demonstrates how client traffic is automated, processed, logged, monitored, and recoverable, in a segmented system. 
