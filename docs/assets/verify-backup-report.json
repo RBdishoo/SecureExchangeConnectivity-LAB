@@ -1,0 +1,14 @@
+{
+  "backup_file": "data/backups/seclab-YYYYMMDDTHHMMSSZ.sql (see local drill; dumps gitignored)",
+  "sha256": "dd4ca04dabe297f90286e92ab4770f8dbc301df0c6d132e9fd18c7a5bdec5812",
+  "sha256_match": true,
+  "expected_sha256": "dd4ca04dabe297f90286e92ab4770f8dbc301df0c6d132e9fd18c7a5bdec5812",
+  "bytes": 1868,
+  "non_empty": true,
+  "has_orders_ddl": true,
+  "copy_or_insert_orders": true,
+  "insert_statements": 0,
+  "dr_orders_count": 2,
+  "ok": true,
+  "note": "Row counts and sha256 captured during Week 4 drill; live dump files are gitignored."
+}

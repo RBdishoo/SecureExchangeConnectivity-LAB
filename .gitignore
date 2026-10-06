@@ -218,3 +218,19 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Lab / local
+.env
+*.pem
+*.key
+docker-data/
+postgres_data/
+.DS_Store
+data/logs/*.jsonl
+data/alerts/*.json
+data/backups/*.sql
+data/backups/*.sha256
+data/backups/*.manifest.json
+!data/logs/.gitkeep
+!data/alerts/.gitkeep
+!data/backups/.gitkeep

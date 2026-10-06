@@ -1,0 +1,27 @@
+title: Brute Force Login Attempts
+id: brute-force
+status: experimental
+level: high
+description: >
+  Multiple failed authentication attempts for the same actor within a short
+  window. Suggests credential stuffing or password guessing against the lab
+  identity service.
+author: Secure Exchange Connectivity Lab
+tags:
+  - attack.credential_access
+  - lab.week3
+false_positives:
+  - Load tests that intentionally fail logins without a shared test actor prefix
+  - Shared demo accounts used by multiple operators in a classroom (mitigate with per-student usernames)
+  - Clock skew when replaying historical logs out of order
+detection:
+  selection:
+    action: login
+    result: denied
+  timeframe_seconds: 300
+  condition:
+    type: threshold
+    group_by: actor_id
+    count: 5
+references:
+  - docs/detection-catalog.md

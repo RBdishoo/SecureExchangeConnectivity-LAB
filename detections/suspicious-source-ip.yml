@@ -1,0 +1,35 @@
+title: Suspicious Source IP
+id: suspicious-source-ip
+status: experimental
+level: medium
+description: >
+  Authentication or order activity originating from source IPs outside the lab
+  allowlist or matching a denylist of known-bad educational ranges.
+author: Secure Exchange Connectivity Lab
+tags:
+  - attack.initial_access
+  - lab.week3
+false_positives:
+  - Operators connecting from unexpected home/VPN addresses during remote labs
+  - Docker bridge IPs not yet added to the allowlist after Compose network changes
+  - Legitimate geo-diversity in a distributed student team (expand allowlist carefully)
+detection:
+  selection:
+    action_any:
+      - login
+      - submit_order
+      - create_order
+      - GET /health
+  timeframe_seconds: 3600
+  condition:
+    type: suspicious_ip
+    allowlist_cidrs:
+      - 127.0.0.0/8
+      - 10.0.0.0/8
+      - 172.16.0.0/12
+      - 192.168.0.0/16
+    denylist_ips:
+      - 198.51.100.66
+      - 203.0.113.99
+references:
+  - docs/detection-catalog.md

@@ -1,0 +1,34 @@
+title: Order Rate Anomaly
+id: market-data-anomaly
+status: experimental
+level: high
+description: >
+  Abnormal burst of successful or attempted order submissions from a single
+  actor. May indicate automation abuse, compromised member credentials, or a
+  runaway client (named market-data-anomaly for catalog continuity with the
+  portfolio plan; scoped to order-rate behavior in this lab).
+author: Secure Exchange Connectivity Lab
+tags:
+  - attack.impact
+  - lab.week3
+false_positives:
+  - Performance tests that submit many synthetic orders under one actor
+  - Clock-compressed log replays that collapse a long window into seconds
+  - Gateway rate-limit retries counted as distinct submit_order attempts
+detection:
+  selection:
+    action_any:
+      - submit_order
+      - create_order
+    result_any:
+      - ok
+      - status_201
+      - rate_limited
+      - denied
+  timeframe_seconds: 60
+  condition:
+    type: threshold
+    group_by: actor_id
+    count: 8
+references:
+  - docs/detection-catalog.md

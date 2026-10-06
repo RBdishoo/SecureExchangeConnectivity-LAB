@@ -1,0 +1,27 @@
+%% Network zones and trust boundaries
+
+flowchart LR
+  subgraph edge_net["edge-net — untrusted member traffic"]
+    GW["gateway"]
+  end
+
+  subgraph app_net["app-net — core services"]
+    ID["identity"]
+    ME["matching-engine"]
+    MD["market-data"]
+  end
+
+  subgraph data_net["data-net — internal, no host ports"]
+    PG[("postgres")]
+  end
+
+  subgraph security_net["security-net — monitoring plane"]
+    AL["alerting"]
+  end
+
+  Host["Lab host :8080"] --> GW
+  GW --- ID
+  GW --- ME
+  GW --- MD
+  ME --- PG
+  GW --- AL

@@ -1,0 +1,29 @@
+%% Disaster recovery flow — Week 4
+
+flowchart TB
+  subgraph Primary["Primary lab stack"]
+    GW["gateway"]
+    ME["matching-engine"]
+    PG[("postgres<br/>data-net")]
+    GW --> ME --> PG
+  end
+
+  subgraph BackupPlane["Backup plane"]
+    Dump["scripts/backup.sh<br/>pg_dump + sha256 + manifest"]
+    Artifact["data/backups/seclab-*.sql"]
+    Dump --> Artifact
+  end
+
+  subgraph DR["DR profile --profile dr"]
+    PGdr[("postgres-dr<br/>data-net")]
+    Restore["scripts/restore-dr.sh"]
+    Verify["scripts/verify-backup.py"]
+    Restore --> PGdr --> Verify
+  end
+
+  PG -->|logical dump| Dump
+  Artifact --> Restore
+  Verify --> Evidence["docs/assets evidence<br/>RPO 15m / RTO 30m lab targets"]
+
+  Outage["Simulated outage:<br/>docker compose stop postgres"] -.-> PG
+  Outage --> Restore

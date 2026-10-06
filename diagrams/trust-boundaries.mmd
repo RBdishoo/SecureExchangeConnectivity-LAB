@@ -1,0 +1,12 @@
+%% Trust boundaries (companion to docs/trust-boundaries.md)
+
+flowchart TB
+  TB1["TB1: Lab host / member → gateway"]
+  TB2["TB2: gateway → app services"]
+  TB3["TB3: matching-engine → postgres"]
+  TB4["TB4: gateway → alerting"]
+
+  Member["Member"] -->|TB1 edge-net| Gateway["gateway"]
+  Gateway -->|TB2 app-net| App["identity / matching / market-data"]
+  App -->|TB3 data-net| DB["postgres"]
+  Gateway -->|TB4 security-net| Alert["alerting"]

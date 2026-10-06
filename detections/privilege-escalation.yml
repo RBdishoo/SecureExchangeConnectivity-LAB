@@ -1,0 +1,30 @@
+title: Privilege Escalation / Unauthorized Role Change
+id: privilege-escalation
+status: experimental
+level: critical
+description: >
+  Detects role-change activity that elevates privileges to administrator, or
+  any successful role change performed by a non-administrator actor (should be
+  impossible under normal RBAC — indicates bypass or forged audit events).
+author: Secure Exchange Connectivity Lab
+tags:
+  - attack.privilege_escalation
+  - lab.week3
+false_positives:
+  - Authorized break-glass admin drills that intentionally grant administrator
+  - Synthetic seed scripts that reset roles during lab setup (tag actor_id with lab-setup-)
+  - Analyst reviewing audit UI while a concurrent admin change lands (correlation clarifies)
+detection:
+  selection:
+    action: change_role
+  timeframe_seconds: 3600
+  condition:
+    type: privilege_escalation
+    elevate_to:
+      - administrator
+    forbid_actor_roles_on_success:
+      - member
+      - security_analyst
+      - operations
+references:
+  - docs/detection-catalog.md
