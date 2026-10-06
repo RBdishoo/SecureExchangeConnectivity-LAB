@@ -1,0 +1,10 @@
+title = "Secure Exchange Connectivity Lab"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "lab-placeholder-allow"
+description = "Allow documented lab-only placeholder secrets that are not real credentials"
+regex = '''changeme-lab-only|LAB_ONLY_PLACEHOLDER|postgres-lab-password'''
+path = '''(?i)(docker-compose\.yml|\.env\.example|README\.md|docs/.*|SECURITY\.md)'''

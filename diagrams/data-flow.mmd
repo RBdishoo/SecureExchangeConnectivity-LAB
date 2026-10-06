@@ -1,0 +1,25 @@
+%% Data-flow sequence for planned order path (Week 1 documents; Week 2 implements)
+
+sequenceDiagram
+  autonumber
+  participant Member as Simulated Member
+  participant Gateway as Gateway edge-net
+  participant Identity as Identity app-net
+  participant Matching as Matching Engine
+  participant DB as PostgreSQL data-net
+  participant Alerting as Alerting security-net
+
+  Member->>Gateway: Submit synthetic order HTTP
+  Gateway->>Gateway: Emit JSON log + correlation_id
+  Gateway->>Identity: Validate principal / role Week 2+
+  Identity-->>Gateway: Allow / deny
+  alt authorized
+    Gateway->>Matching: Forward order app-net
+    Matching->>DB: Persist data-net
+    DB-->>Matching: ACK
+    Matching-->>Gateway: Accept
+    Gateway-->>Member: 2xx
+  else denied
+    Gateway-->>Member: 401 / 403
+  end
+  Gateway-->>Alerting: Telemetry / future detections Week 3+

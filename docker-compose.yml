@@ -1,0 +1,134 @@
+# Secure Exchange Connectivity Lab — Week 1 foundation
+# Synthetic / educational only. No real market data or credentials.
+
+services:
+  gateway:
+    build:
+      context: .
+      dockerfile: services/gateway/Dockerfile
+    container_name: secx-gateway
+    ports:
+      - "8080:8000"
+    networks:
+      - edge-net
+      - app-net
+      - security-net
+    environment:
+      - SERVICE_NAME=gateway
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    depends_on:
+      identity:
+        condition: service_healthy
+      matching-engine:
+        condition: service_healthy
+
+  identity:
+    build:
+      context: .
+      dockerfile: services/identity/Dockerfile
+    container_name: secx-identity
+    networks:
+      - app-net
+    environment:
+      - SERVICE_NAME=identity
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8001/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  matching-engine:
+    build:
+      context: .
+      dockerfile: services/matching-engine/Dockerfile
+    container_name: secx-matching-engine
+    networks:
+      - app-net
+      - data-net
+    environment:
+      - SERVICE_NAME=matching-engine
+      - DATABASE_URL=postgresql://labuser:postgres-lab-password@postgres:5432/seclab
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8002/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  market-data:
+    build:
+      context: .
+      dockerfile: services/market-data/Dockerfile
+    container_name: secx-market-data
+    networks:
+      - app-net
+    environment:
+      - SERVICE_NAME=market-data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8003/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  alerting:
+    build:
+      context: .
+      dockerfile: services/alerting/Dockerfile
+    container_name: secx-alerting
+    networks:
+      - security-net
+    environment:
+      - SERVICE_NAME=alerting
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8004/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: secx-postgres
+    networks:
+      - data-net
+    environment:
+      POSTGRES_USER: labuser
+      POSTGRES_PASSWORD: postgres-lab-password
+      POSTGRES_DB: seclab
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U labuser -d seclab"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+    # Intentionally NOT published to the host — data-net only.
+
+networks:
+  edge-net:
+    driver: bridge
+    name: secx-edge-net
+  app-net:
+    driver: bridge
+    name: secx-app-net
+  data-net:
+    driver: bridge
+    name: secx-data-net
+    internal: true
+  security-net:
+    driver: bridge
+    name: secx-security-net
+
+volumes:
+  postgres_data:

@@ -1,0 +1,34 @@
+%% Secure Exchange Connectivity Lab — system context (Week 1)
+%% Educational / synthetic only — not a real exchange architecture.
+
+flowchart TB
+  subgraph External["External / Lab Host"]
+    Member["Simulated Member Client"]
+    Operator["Lab Operator"]
+  end
+
+  subgraph EdgeZone["edge-net"]
+    Gateway["gateway :8000"]
+  end
+
+  subgraph AppZone["app-net"]
+    Identity["identity :8001"]
+    Matching["matching-engine :8002"]
+    MarketData["market-data :8003"]
+  end
+
+  subgraph DataZone["data-net (internal)"]
+    Postgres[("postgres :5432")]
+  end
+
+  subgraph SecurityZone["security-net"]
+    Alerting["alerting :8004"]
+  end
+
+  Member -->|HTTP :8080| Gateway
+  Operator -->|health checks| Gateway
+  Gateway --> Identity
+  Gateway --> Matching
+  Gateway --> MarketData
+  Matching --> Postgres
+  Gateway -.-> Alerting

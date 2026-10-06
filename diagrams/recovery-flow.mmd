@@ -1,0 +1,7 @@
+%% Disaster recovery flow — Week 1 stub (implemented in Week 4)
+
+flowchart LR
+  ProdDB[("Lab Postgres")] -->|backup.sh Week 4| Backup["Backup artifact"]
+  Backup -->|restore-dr.sh| DRDB[("DR Postgres")]
+  DRDB --> Verify["verify-backup.py"]
+  Verify --> Report["Integrity report"]

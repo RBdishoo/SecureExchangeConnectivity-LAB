@@ -1,0 +1,4 @@
+# Week 3 scaffold
+title: Brute force login attempts
+status: planned
+description: Multiple failed authentications for one actor within a short window.

@@ -1,0 +1,15 @@
+# Week 3+ scaffold — security scanning CI
+name: security-ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  placeholder:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Week 1 placeholder
+        run: echo "Trivy/Semgrep/Gitleaks/pip-audit wired in Week 3"
