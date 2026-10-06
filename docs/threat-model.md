@@ -2,7 +2,7 @@
 
 ## Scope
 
-Week 1 threat model for the Secure Exchange Connectivity Lab (synthetic educational environment).
+Threat model for the Secure Exchange Connectivity Lab (synthetic educational environment).
 
 > Not a model of any real exchange. Assets, actors, and controls below are lab constructs.
 
@@ -12,19 +12,20 @@ Week 1 threat model for the Secure Exchange Connectivity Lab (synthetic educatio
 |-------|-------------|-------|
 | Synthetic order messages | Medium (lab) | Mock only; still treat as tenant-scoped |
 | Identity / role assignments | High | Admin changes are privileged |
-| PostgreSQL lab database | High | data-net only |
+| PostgreSQL lab database | High | data-net only; backup/DR artifacts |
 | Structured security logs | Medium | May contain actor IDs; no tokens |
-| Alerting pipeline (future) | Medium | Lives on security-net |
+| Alerting pipeline | Medium | Lives on security-net |
+| Backup dumps | High (lab) | Same sensitivity as DB; store under `data/backups/` (gitignored) |
 
 ## Actors
 
 | Actor | Trust | Capabilities (intended) |
 |-------|-------|-------------------------|
-| Member | Low | Submit synthetic orders via gateway (Week 2+) |
-| Security analyst | Medium | Investigate alerts (Week 3+) |
-| Operations | Medium | Health, backup/restore (Week 4+) |
-| Administrator | High | Role changes (Week 2+) |
-| External attacker | None | Probe exposed edge; attempt lateral movement |
+| Member | Low | Submit/read own-tenant synthetic orders via gateway |
+| Security analyst | Medium | Investigate alerts; read audit; cannot change roles |
+| Operations | Medium | Health, backup/restore |
+| Administrator | High | Role changes (audited) |
+| External attacker | None | Probe exposed edge; attempt lateral movement / cross-tenant reads |
 
 ## Scenarios
 
@@ -32,10 +33,9 @@ Week 1 threat model for the Secure Exchange Connectivity Lab (synthetic educatio
 
 | | |
 |--|--|
-| **Flow** | Member → gateway → identity (authz) → matching-engine → PostgreSQL |
+| **Flow** | Member → gateway → JWT/RBAC → matching-engine → PostgreSQL |
 | **Threats** | Spoofed identity, cross-tenant order, injection, replay, order-rate abuse |
-| **Week 1 controls** | Network segmentation; structured request logs with correlation IDs |
-| **Later controls** | JWT/RBAC, validation, rate limits, detections |
+| **Controls** | Network segmentation; JWT; schema validation; rate limits; structured logs; order-rate detection |
 
 ### 2. Administrator changes a user role
 
@@ -43,34 +43,31 @@ Week 1 threat model for the Secure Exchange Connectivity Lab (synthetic educatio
 |--|--|
 | **Flow** | Admin → gateway → identity |
 | **Threats** | Privilege escalation, unauthorized role change, missing audit trail |
-| **Week 1 controls** | Identity service isolated to app-net; logging scaffold |
-| **Later controls** | RBAC on admin APIs; immutable admin-action audit events; privilege-escalation detection |
+| **Controls** | Admin-only RBAC; append-only audit; privilege-escalation detection |
 
 ### 3. Analyst investigates an alert
 
 | | |
 |--|--|
-| **Flow** | Analyst → gateway / tooling → alerting (+ log access) |
-| **Threats** | Over-privileged analyst access, log tampering, alert noise hiding real events |
-| **Week 1 controls** | Alerting on security-net; JSON logs ready for triage |
-| **Later controls** | Least-privilege analyst role; investigate scripts; detection catalog |
+| **Flow** | Analyst → tooling → alerting / logs |
+| **Threats** | Over-privileged access, log tampering, alert noise |
+| **Controls** | Analyst cannot modify roles; investigate script; detection catalog FP notes |
 
 ### 4. DR restoration occurs
 
 | | |
 |--|--|
-| **Flow** | Operations restores backup into DR Postgres; verify integrity |
+| **Flow** | Ops backs up Postgres → outage → restore to `postgres-dr` → verify |
 | **Threats** | Corrupt/incomplete backup, restore to wrong environment, secret leakage in backup media |
-| **Week 1 controls** | Postgres confined to internal data-net; documented recovery stub diagram |
-| **Later controls** | `backup.sh` / `restore-dr.sh`, integrity verification, runbooks |
+| **Controls** | SHA-256 sidecars; verify script; internal data-net; gitignore backups; RPO/RTO documented |
 
 ## STRIDE snapshot (edge gateway)
 
 | Category | Example | Mitigation direction |
 |----------|---------|----------------------|
-| Spoofing | Fake member credentials | JWT + hashed passwords (Week 2) |
+| Spoofing | Fake member credentials | JWT + hashed passwords |
 | Tampering | Altered order payload | Validation + integrity checks |
 | Repudiation | Denied admin action | Audit logs with actor + correlation ID |
 | Information disclosure | DB exposed to host | data-net internal; no host port |
-| Denial of service | Flood gateway | Rate limits (Week 2) |
-| Elevation of privilege | Member → admin role | RBAC + detection (Weeks 2–3) |
+| Denial of service | Flood gateway | Rate limits + order-rate detection |
+| Elevation of privilege | Member → admin role | RBAC + privilege-escalation detection |

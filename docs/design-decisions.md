@@ -47,6 +47,12 @@
 3. **Lab scope:** Compose publishes plaintext `localhost:8080` for educational demos. Enabling HTTPS locally is feasible later with a mounted self-signed cert on an nginx sidecar; it is intentionally deferred so Week 2 focuses on identity and authorization behavior.
 4. **In-transit after termination:** Traffic on `app-net` / `data-net` remains private Docker networks in the lab model; production would add mTLS between services.
 
+## Disaster recovery (Week 4)
+
+**Decision:** Logical `pg_dump` backups with SHA-256 sidecars, restore into a Compose `--profile dr` Postgres, and verify with `verify-backup.py`. Lab targets: RPO 15 minutes, RTO 30 minutes.
+
+**Why:** Demonstrates backup integrity and isolated restore without claiming multi-region replication. Identity/audit remain in-memory and are called out as backup gaps.
+
 ## Detection engine as Python + YAML later
 
 **Decision:** Prefer a Python detection pipeline over standing up OpenSearch/Wazuh for the MVP.

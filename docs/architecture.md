@@ -50,9 +50,6 @@ Every service emits structured JSON logs with:
 
 Shared helper: `services/common/logging_utils.py`.
 
-## Out of scope for Week 2
+## Status
 
-- Detection rules and triage scripts (Week 3)
-- Backup / DR restore verification (Week 4)
-- In-compose TLS termination (documented in design-decisions; edge proxy model)
-- Real FIX protocol or live market data (never)
+Week 4 completes the four-week lab: recovery scripts, RPO/RTO runbook, portfolio demo path, and security architecture summary.

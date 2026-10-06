@@ -2,25 +2,27 @@
 
 A fictional, containerized exchange-connectivity environment that simulates secure member order submission, market-data distribution, role-based administration, security monitoring, and a tested disaster-recovery workflow.
 
-> **Educational disclaimer:** This is an educational reference implementation informed by publicly available exchange-connectivity concepts. It does not represent IEX Group’s internal systems, configurations, security controls, or security posture.
+> **Educational disclaimer:** This is an educational reference implementation informed by publicly available exchange-connectivity concepts. It does **not** represent IEX Group’s internal systems, configurations, security controls, or security posture.
 
 Synthetic trading events only. No real market activity, customer data, credentials, or IEX systems are used.
 
-## Quick start
+## Setup
 
 ```bash
 docker compose up --build
+./scripts/health-check.sh
 ```
 
-Gateway health (only host-exposed service):
+Gateway (only host-published service): `http://localhost:8080`
+
+Tests:
 
 ```bash
-curl -s http://localhost:8080/health | jq
+pip install -r requirements-dev.txt
+pytest -q
 ```
 
-### Auth demo (Week 2)
-
-Lab users (synthetic passwords — local demos only):
+## Lab users (synthetic — local demos only)
 
 | Username | Password | Role | Tenant |
 |----------|----------|------|--------|
@@ -30,12 +32,19 @@ Lab users (synthetic passwords — local demos only):
 | `ops` | `OpsUser1!` | operations | LAB |
 | `admin` | `Admin1!lab` | administrator | LAB |
 
+## End-to-end demo script
+
+Covers: **valid order → blocked cross-tenant → trigger alert → investigate → restore backup**.
+
 ```bash
-# Login as member A and submit an order
+# 0) Stack up
+docker compose up --build -d
+./scripts/health-check.sh
+
+# 1) Valid order (member A)
 TOKEN_A=$(curl -s -X POST http://localhost:8080/auth/login \
   -H 'content-type: application/json' \
   -d '{"username":"member_a","password":"MemberA1!"}' | jq -r .access_token)
-
 ORDER=$(curl -s -X POST http://localhost:8080/orders \
   -H "authorization: Bearer $TOKEN_A" \
   -H 'content-type: application/json' \
@@ -43,131 +52,95 @@ ORDER=$(curl -s -X POST http://localhost:8080/orders \
 echo "$ORDER" | jq
 ORDER_ID=$(echo "$ORDER" | jq -r .order_id)
 
-# Cross-tenant read blocked (member B → A's order)
+# 2) Blocked cross-tenant read (member B → A's order) — expect HTTP 403
 TOKEN_B=$(curl -s -X POST http://localhost:8080/auth/login \
   -H 'content-type: application/json' \
   -d '{"username":"member_b","password":"MemberB1!"}' | jq -r .access_token)
-curl -s -o /dev/stderr -w "%{http_code}\n" \
+curl -s -o /dev/stderr -w "cross_tenant_status=%{http_code}\n" \
   -H "authorization: Bearer $TOKEN_B" \
-  http://localhost:8080/orders/$ORDER_ID
+  "http://localhost:8080/orders/$ORDER_ID"
 
-# Analyst cannot modify roles (expect 403)
-TOKEN_AN=$(curl -s -X POST http://localhost:8080/auth/login \
-  -H 'content-type: application/json' \
-  -d '{"username":"analyst","password":"Analyst1!"}' | jq -r .access_token)
-curl -s -o /dev/stderr -w "%{http_code}\n" -X PATCH \
-  -H "authorization: Bearer $TOKEN_AN" \
-  -H 'content-type: application/json' \
-  -d '{"role":"administrator"}' \
-  http://localhost:8080/users/usr-member-a/role
-
-# Admin role change creates audit record
-TOKEN_ADMIN=$(curl -s -X POST http://localhost:8080/auth/login \
-  -H 'content-type: application/json' \
-  -d '{"username":"admin","password":"Admin1!lab"}' | jq -r .access_token)
-curl -s -X PATCH http://localhost:8080/users/usr-ops/role \
-  -H "authorization: Bearer $TOKEN_ADMIN" \
-  -H 'content-type: application/json' \
-  -d '{"role":"security_analyst"}' | jq .audit
-curl -s -H "authorization: Bearer $TOKEN_ADMIN" http://localhost:8080/audit | jq '.audit[-1]'
-```
-
-### Tests
-
-```bash
-pip install -r requirements-dev.txt
-pytest -q
-```
-
-### Detection demo (Week 3)
-
-```bash
-# 1) Generate benign + malicious synthetic JSONL
+# 3) Trigger alerts from synthetic malicious + benign corpus
 python scripts/generate-events.py --out data/logs/synthetic-events.jsonl
-
-# 2) Run all five detections
 python scripts/run-detections.py --logs data/logs/synthetic-events.jsonl --out data/alerts
+python -c 'import json; print("rules", sorted({a["rule_id"] for a in json.load(open("data/alerts/alerts.json"))}))'
 
-# 3) Investigate one alert (pick an alert_id from data/alerts/alerts.json)
-ALERT=$(python -c 'import json; print(json.load(open("data/alerts/alerts.json"))[0]["alert_id"])')
+# 4) Investigate (prefer a cross-tenant alert when present)
+ALERT=$(python -c 'import json; a=json.load(open("data/alerts/alerts.json")); print(next(x["alert_id"] for x in a if x["rule_id"]=="cross-tenant-access"))')
 python scripts/investigate-alert.py \
-  --alert data/alerts/$ALERT.json \
+  --alert "data/alerts/$ALERT.json" \
   --logs data/logs/synthetic-events.jsonl
+
+# 5) Backup → simulate primary DB stop → restore DR → verify
+./scripts/backup.sh
+BACKUP=$(ls -1t data/backups/seclab-*.sql | head -1)
+docker compose stop postgres
+./scripts/restore-dr.sh "$BACKUP"
+python scripts/verify-backup.py --backup "$BACKUP" --check-dr --min-orders 1 \
+  --out docs/assets/verify-backup-report.json
+docker compose start postgres   # recover primary when demo ends
 ```
 
-Catalog + false positives: [`docs/detection-catalog.md`](docs/detection-catalog.md)  
-Sample incident write-up: [`docs/incident-report-cross-tenant.md`](docs/incident-report-cross-tenant.md)
-
-Inspect structured JSON logs:
-
-```bash
-docker compose logs gateway --tail=20
-docker compose logs identity --tail=20
-docker compose logs matching-engine --tail=20
-```
-
-Stop:
-
-```bash
-docker compose down
-```
+Optional video: skip unless you want a local screen recording — the script above is the portfolio demo path. Captured DR evidence: [`docs/assets/dr-simulation.md`](docs/assets/dr-simulation.md).
 
 ## Services and trust boundaries
 
 | Service | Purpose | Networks | Trust boundary |
 |---------|---------|----------|----------------|
 | **gateway** | Edge entry; JWT auth; orders; rate limits | `edge-net`, `app-net`, `security-net` | Terminates untrusted member/lab traffic; only published port (`:8080`) |
-| **identity** | Login, bcrypt passwords, JWT, RBAC, audit | `app-net` | Not internet-reachable; auth decisions stay on the app plane |
-| **matching-engine** | Tenant-scoped synthetic orders | `app-net`, `data-net` | Only app service allowed onto the data plane |
-| **market-data** | `/health` scaffold | `app-net` | App-plane distribution stub |
-| **alerting** | Detection engine API; alert store | `security-net` | Monitoring plane separated from trading path |
-| **postgres** | Lab database | `data-net` (**internal**) | No host port; unreachable from edge |
+| **identity** | Login, bcrypt, JWT, RBAC, audit | `app-net` | Not internet-reachable |
+| **matching-engine** | Tenant-scoped synthetic orders | `app-net`, `data-net` | Only app service on the data plane |
+| **market-data** | Health scaffold | `app-net` | App-plane stub |
+| **alerting** | Detection engine API | `security-net` | Monitoring plane |
+| **postgres** | Primary lab DB | `data-net` (**internal**) | No host port |
+| **postgres-dr** | DR DB (`--profile dr`) | `data-net` | Started only for recovery drills |
 
-Network diagram: [`diagrams/network-zones.mmd`](diagrams/network-zones.mmd) · Trust boundaries: [`docs/trust-boundaries.md`](docs/trust-boundaries.md)
+## Security decisions (short)
 
-## Structured logging
+- Segment networks before features; keep Postgres off the host network namespace.
+- Prefer JWT/RBAC + tenant checks over “successful HTTP” as the security story.
+- Emit SIEM-ready JSON logs from day one; detect with portable YAML + Python.
+- Document TLS edge termination rather than fake HTTPS inside Compose.
+- Prove recovery with checksummed logical dumps and an isolated DR profile (RPO 15m / RTO 30m lab targets).
 
-Every service emits JSON lines including:
-
-- `timestamp`
-- `actor_id`
-- `source_ip`
-- `action`
-- `result`
-- `correlation_id`
-
-Pass optional headers on requests: `x-actor-id`, `x-correlation-id`.
+Details: [`docs/security-architecture-summary.md`](docs/security-architecture-summary.md) · [`docs/design-decisions.md`](docs/design-decisions.md)
 
 ## Documentation
 
 | Doc | Description |
 |-----|-------------|
 | [`docs/architecture.md`](docs/architecture.md) | System overview |
-| [`docs/threat-model.md`](docs/threat-model.md) | Threats for order, role change, investigate, DR |
+| [`docs/security-architecture-summary.md`](docs/security-architecture-summary.md) | One-page control map |
+| [`docs/threat-model.md`](docs/threat-model.md) | Order / role / investigate / DR threats |
 | [`docs/trust-boundaries.md`](docs/trust-boundaries.md) | Zone rules |
 | [`docs/data-flow.md`](docs/data-flow.md) | Request and log flows |
-| [`docs/design-decisions.md`](docs/design-decisions.md) | Stack choices, TLS termination notes |
-| [`docs/detection-catalog.md`](docs/detection-catalog.md) | Detection rules + false positives |
-| [`docs/incident-report-cross-tenant.md`](docs/incident-report-cross-tenant.md) | Sample investigation write-up |
+| [`docs/detection-catalog.md`](docs/detection-catalog.md) | Detections + false positives |
+| [`docs/incident-response-runbook.md`](docs/incident-response-runbook.md) | Triage steps |
+| [`docs/incident-report-cross-tenant.md`](docs/incident-report-cross-tenant.md) | Sample investigation |
+| [`docs/disaster-recovery-runbook.md`](docs/disaster-recovery-runbook.md) | Backup / restore / RPO-RTO |
 | [`diagrams/`](diagrams/) | Mermaid sources (render on GitHub) |
 
-## Status
+## Status / Definition of Done
 
-- **Week 1 complete:** Compose networks, health services, JSON logging, docs/diagrams.
-- **Week 2 complete:** JWT/RBAC, tenant-scoped orders, admin audit, validation, rate limits, negative tests.
-- **Week 3 complete:** Five detections, event generator, triage script, incident report, security CI.
-- Later: backup/DR + portfolio polish (4).
+- Weeks 1–4 complete for this lab scope.
+- Documented setup (`docker compose up --build`)
+- No real secrets committed (lab placeholders + Gitleaks config/CI)
+- ≥25 automated tests (see `pytest`)
+- Five detections with repeatable triggers
+- Written investigation + DR restore verification evidence
+- Architecture / data-flow / recovery diagrams included
+- README covers setup, demo, security decisions, limitations, disclaimer
 
 ## Limitations
 
 - No real FIX sessions, market data feeds, or exchange connectivity.
-- TLS is **not** terminated in Compose; see design-decisions for edge-termination + cert lifecycle.
-- Identity user store and audit log are in-memory (reset on container restart).
-- Matching engine enforces tenancy in-process; Postgres persistence is best-effort.
-- Detections operate on synthetic JSONL (not a full SIEM); thresholds are lab-tuned.
-- Security CI blocks secrets / high-severity filesystem findings as configured; tune allowlists for classroom forks.
+- TLS is not terminated in Compose (edge-termination model documented).
+- Identity user store and audit log are in-memory (not covered by Postgres backups).
+- Matching-engine also keeps an in-memory cache; durable demo state is what was persisted to Postgres.
+- Detections use offline JSONL (not a full SIEM); thresholds are lab-tuned.
+- Logical `pg_dump` only — not continuous replication / WAL shipping.
 - Compose credentials / JWT secret are lab placeholders — never reuse outside this repo.
-- `data-net` isolation is a Docker Compose teaching model, not a production VPC design.
+- Network isolation here is a Docker Compose teaching model, not a production VPC/multi-region design.
 
 ## License
 

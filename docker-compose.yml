@@ -131,6 +131,26 @@ services:
       start_period: 5s
     # Intentionally NOT published to the host — data-net only.
 
+  postgres-dr:
+    profiles: ["dr"]
+    image: postgres:16-alpine
+    container_name: secx-postgres-dr
+    networks:
+      - data-net
+    environment:
+      POSTGRES_USER: labuser
+      POSTGRES_PASSWORD: postgres-lab-password
+      POSTGRES_DB: seclab
+    volumes:
+      - postgres_dr_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U labuser -d seclab"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+    # DR instance — started only with: docker compose --profile dr up -d postgres-dr
+
 networks:
   edge-net:
     driver: bridge
@@ -148,4 +168,5 @@ networks:
 
 volumes:
   postgres_data:
+  postgres_dr_data:
   lab_data:
